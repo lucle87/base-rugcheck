@@ -14,7 +14,7 @@ adaptive scoring). Chi thay lop tra tien: middleware.ts (x402) thay cho mppx.
 - openapi.json / llms.txt : discovery cho agent + x402scan
 
 ## Hai mang
-- X402_NETWORK=base-sepolia : TESTNET. Facilitator free https://x402.org/facilitator,
+- X402_NETWORK=base-sepolia (TESTNET truoc) : TESTNET. Facilitator free https://x402.org/facilitator,
   KHONG can CDP key. Dung de test truoc.
 - X402_NETWORK=base : MAINNET. Dung facilitator Coinbase (@coinbase/x402),
   CAN CDP_API_KEY_ID + CDP_API_KEY_SECRET (lay o Coinbase Developer Platform).
@@ -53,8 +53,9 @@ Invoke-WebRequest -Uri "http://localhost:3000/api/rugcheck" -Method Post -Conten
 5. Dang ky tren x402scan.com (tim nut submit/add endpoint). Discovery = /openapi.json.
 
 ## Luu y thang than
-- x402-next + @coinbase/x402 de "latest". Neu install keo ban LOI (giong bai hoc mppx
-  0.8.1), BAO NGAY, va sau khi chay duoc thi GHIM dung version (npm ls x402-next).
+- DUNG x402 V2: @x402/next + @x402/core + @x402/evm (+ @coinbase/x402 cho mainnet).
+  x402scan CHI nhan v2. Bo cu x402-next la v1 (bi tu choi). De "latest", chay duoc
+  thi GHIM version (npm ls @x402/next @x402/core @x402/evm).
 - KHONG test duoc x402 that trong moi truong cua minh (mang tat). Da typecheck offline.
   Ban phai test cong 402 + flow tra tien tren may.
 - Mainnet CAN CDP key. Test xong tren base-sepolia roi moi chuyen base.

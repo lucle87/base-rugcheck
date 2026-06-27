@@ -1,4 +1,4 @@
-import { PRICE, BASE_URL, X402_NETWORK } from "@/lib/x402config";
+import { PRICE, BASE_URL, NETWORK_LABEL } from "@/lib/x402config";
 
 export default function Home() {
   return (
@@ -22,7 +22,7 @@ Content-Type: application/json
 
 { "token": "0x...", "chain": "bnb", "mode": "auto" }
 
-Price: ${PRICE} per call (USDC via x402 on ${X402_NETWORK})`}</pre>
+Price: ${PRICE} per call (USDC via x402 on ${NETWORK_LABEL})`}</pre>
       </div>
 
       <div style={{ marginTop: 24 }}>

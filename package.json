@@ -8,16 +8,19 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "15.5.19",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "^16.2.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "viem": "^2.21.0",
-    "x402-next": "1.2.0",
-    "@coinbase/x402": "2.1.0"
+    "@x402/next": "latest",
+    "@x402/core": "latest",
+    "@x402/evm": "latest",
+    "@coinbase/x402": "latest"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "typescript": "^5"
   }
 }

@@ -17,6 +17,7 @@ export async function GET() {
     },
     servers: [{ url: BASE_URL }],
     "x-docs": { llmsTxt: BASE_URL + "/llms.txt" },
+    "x-discovery": { ownershipProofs: [PAY_TO] },
     "x-payment": {
       protocol: "x402",
       network: X402_NETWORK,
@@ -34,7 +35,10 @@ export async function GET() {
           tags: ["crypto", "security", "token", "rugcheck", "evm", "base", "meme", "x402"],
           "x-payment-info": {
             price: { mode: "fixed", amount: priceUsd, currency: "USD" },
-            protocols: [{ x402: { network: X402_NETWORK, asset: "USDC", payTo: PAY_TO } }],
+            protocols: ["x402"],
+            network: X402_NETWORK,
+            asset: "USDC",
+            payTo: PAY_TO,
           },
           requestBody: {
             required: true,

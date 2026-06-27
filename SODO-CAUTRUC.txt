@@ -1,29 +1,30 @@
 ==========================================
-  SO DO CAU TRUC - DU AN base-rugcheck (x402)
+  SO DO CAU TRUC - base-rugcheck (x402 V2, Next 16)
 ==========================================
 
 base-rugcheck/
 |
-|-- middleware.ts          <- CONG x402 (gate /api/rugcheck) + preview bypass
-|
 |-- app/
-|   |-- api/rugcheck/route.ts   <- doc body + goi rugCheck (KHONG co code tra tien)
+|   |-- api/rugcheck/route.ts   <- withX402 gate (pattern CHINH THUC cho API route)
+|   |                              + preview bypass. KHONG dung proxy.ts.
 |   |-- openapi.json/route.ts   <- discovery (x-payment: x402/base)
 |   |-- llms.txt/route.ts       <- docs agent
 |   |-- icon.svg / layout.tsx / page.tsx
 |
 |-- lib/
-|   |-- x402config.ts  <- network (base/base-sepolia), vi nhan, gia, facilitator
+|   |-- x402server.ts  <- x402ResourceServer + facilitator + registerExactEvmScheme
+|   |-- x402config.ts  <- network (eip155:8453 / 84532), vi nhan, gia
 |   |-- rugcheck.ts    <- LOI (giong ban EVM MPP, giu nguyen)
 |   `-- chains.ts      <- LOI (giong ban EVM MPP, giu nguyen)
 |
-|-- package.json (next + viem + x402-next + @coinbase/x402)
+|-- package.json (next 16 + react 19 + viem + @x402/next @x402/core @x402/evm + @coinbase/x402)
 |-- tsconfig / next.config / .env.example / .gitignore / README.md
 
-KHAC BAN MPP:
-  - Thanh toan: x402 (middleware.ts) thay cho mppx (route.ts)
-  - Tra tien: USDC tren Base, khong phai USDC.e tren Tempo
-  - Loi data: GIU NGUYEN
+QUAN TRONG:
+  - API route dung withX402 (KHONG phai paymentProxy/proxy.ts).
+  - withX402 chi settle khi response thanh cong (< 400).
+  - Next 16: KHONG khai runtime trong config; route handler thi khai runtime=nodejs duoc.
+  - x402 V2: network CAIP-2 (eip155:8453 mainnet / eip155:84532 testnet).
 
 CHAY:
   npm install

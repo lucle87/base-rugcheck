@@ -1,4 +1,4 @@
-import { PRICE, BASE_URL, X402_NETWORK, PAY_TO } from "@/lib/x402config";
+import { PRICE, BASE_URL, NETWORK_LABEL, PAY_TO } from "@/lib/x402config";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ Reputable centrally-controlled tokens may still show CAUTION.
 - auto   : picks new or mature from on-chain liquidity depth (default).
 
 ## Endpoint
-POST ${BASE_URL}/api/rugcheck   (price: ${PRICE} per call, paid in USDC via x402 on ${X402_NETWORK})
+POST ${BASE_URL}/api/rugcheck   (price: ${PRICE} per call, paid in USDC via x402 on ${NETWORK_LABEL})
 
 Request body (JSON):
 { "token": "0x...", "chain": "bnb", "mode": "auto" }
