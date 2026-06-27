@@ -4,7 +4,7 @@
 // Preview bypass: POST /api/rugcheck?preview=KEY thi BO QUA thanh toan de test local.
 // XOA PREVIEW_KEY tren production.
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
 import { server } from "@/lib/x402server";
 import { PAY_TO, PRICE, X402_NETWORK } from "@/lib/x402config";
@@ -27,7 +27,7 @@ async function handler(request: NextRequest) {
   const mode = body?.mode ? body.mode.toString().trim().toLowerCase() : undefined;
 
   if (!token || !chain) {
-    return Response.json(
+    return NextResponse.json(
       { error: "Missing 'token' and 'chain' (one of: eth, bnb, base)." },
       { status: 400 }
     );
@@ -35,9 +35,9 @@ async function handler(request: NextRequest) {
 
   try {
     const data = await rugCheck(token, chain, mode);
-    return Response.json(data);
+    return NextResponse.json(data);
   } catch (e: any) {
-    return Response.json(
+    return NextResponse.json(
       { error: "Rug check failed: " + (e?.message || "unknown") },
       { status: 502 }
     );

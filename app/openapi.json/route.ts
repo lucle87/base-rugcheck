@@ -17,8 +17,10 @@ export async function GET() {
     },
     servers: [{ url: BASE_URL }],
     "x-docs": { llmsTxt: BASE_URL + "/llms.txt" },
+    "x402Version": 2,
     "x-discovery": { ownershipProofs: [PAY_TO] },
     "x-payment": {
+      x402Version: 2,
       protocol: "x402",
       network: X402_NETWORK,
       caip2: CAIP2,
@@ -34,6 +36,7 @@ export async function GET() {
           summary: "On-chain rug/safety check for an EVM token (GO/CAUTION/DANGER), paid via x402 on Base",
           tags: ["crypto", "security", "token", "rugcheck", "evm", "base", "meme", "x402"],
           "x-payment-info": {
+            x402Version: 2,
             price: { mode: "fixed", amount: priceUsd, currency: "USD" },
             protocols: ["x402"],
             network: X402_NETWORK,
