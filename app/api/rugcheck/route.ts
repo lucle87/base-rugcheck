@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Handler that su (da tra tien hoac preview).
-async function handler(request: NextRequest) {
+async function handler(request: NextRequest): Promise<any> {
   let body: any = {};
   try {
     body = await request.json();
@@ -46,7 +46,7 @@ async function handler(request: NextRequest) {
 
 // Handler co gate thanh toan x402.
 const paidHandler = withX402(
-  handler,
+  handler as any,
   {
     accepts: [
       {
