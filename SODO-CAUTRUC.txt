@@ -1,0 +1,32 @@
+==========================================
+  SO DO CAU TRUC - DU AN base-rugcheck (x402)
+==========================================
+
+base-rugcheck/
+|
+|-- middleware.ts          <- CONG x402 (gate /api/rugcheck) + preview bypass
+|
+|-- app/
+|   |-- api/rugcheck/route.ts   <- doc body + goi rugCheck (KHONG co code tra tien)
+|   |-- openapi.json/route.ts   <- discovery (x-payment: x402/base)
+|   |-- llms.txt/route.ts       <- docs agent
+|   |-- icon.svg / layout.tsx / page.tsx
+|
+|-- lib/
+|   |-- x402config.ts  <- network (base/base-sepolia), vi nhan, gia, facilitator
+|   |-- rugcheck.ts    <- LOI (giong ban EVM MPP, giu nguyen)
+|   `-- chains.ts      <- LOI (giong ban EVM MPP, giu nguyen)
+|
+|-- package.json (next + viem + x402-next + @coinbase/x402)
+|-- tsconfig / next.config / .env.example / .gitignore / README.md
+
+KHAC BAN MPP:
+  - Thanh toan: x402 (middleware.ts) thay cho mppx (route.ts)
+  - Tra tien: USDC tren Base, khong phai USDC.e tren Tempo
+  - Loi data: GIU NGUYEN
+
+CHAY:
+  npm install
+  copy .env.example .env   (X402_NETWORK=base-sepolia, PREVIEW_KEY=test123)
+  npm run dev
+==========================================
