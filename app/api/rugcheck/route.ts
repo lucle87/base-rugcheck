@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "@x402/next";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { server } from "@/lib/x402server";
 import { PAY_TO, PRICE, X402_NETWORK } from "@/lib/x402config";
 import { rugCheck } from "@/lib/rugcheck";
@@ -59,7 +60,38 @@ const paidHandler = withX402(
     description:
       "On-chain token safety check (GO/CAUTION/DANGER) for EVM tokens on eth, bnb, or base.",
     mimeType: "application/json",
-  },
+    extensions: {
+      ...declareDiscoveryExtension({
+        bodyType: "json",
+        input: { token: "0x...", chain: "bnb", mode: "auto" },
+        inputSchema: {
+          properties: {
+            token: { type: "string", description: "Token contract address (0x...)." },
+            chain: { type: "string", enum: ["eth", "bnb", "base"], description: "EVM chain." },
+            mode: { type: "string", enum: ["auto", "new", "mature"], description: "Scoring mode." },
+          },
+          required: ["token", "chain"],
+        },
+        output: {
+          example: {
+            chain: "bnb",
+            token: "0x...",
+            verdict: "CAUTION",
+            reasons: ["..."],
+          },
+          schema: {
+            properties: {
+              chain: { type: "string" },
+              token: { type: "string" },
+              verdict: { type: "string", enum: ["GO", "CAUTION", "DANGER"] },
+              reasons: { type: "array", items: { type: "string" } },
+              checks: { type: "array", items: { type: "object" } },
+            },
+          },
+        },
+      }),
+    },
+  } as any,
   server
 );
 

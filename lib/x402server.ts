@@ -4,6 +4,7 @@
 import { x402ResourceServer } from "@x402/core/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { registerExactEvmScheme } from "@x402/evm/exact/server";
+import { bazaarResourceServerExtension } from "@x402/extensions/bazaar";
 import { facilitator as cdpFacilitator } from "@coinbase/x402";
 import { IS_MAINNET, FACILITATOR_URL } from "@/lib/x402config";
 
@@ -15,3 +16,5 @@ const facilitatorClient = IS_MAINNET
 
 export const server = new x402ResourceServer(facilitatorClient);
 registerExactEvmScheme(server);
+// Bazaar discovery: cho phep agent/facilitator tu lap danh muc service.
+(server as any).registerExtension?.(bazaarResourceServerExtension);
