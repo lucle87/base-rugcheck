@@ -24,6 +24,38 @@ const pay = paymentMiddleware(
         description:
           "On-chain token safety check (GO/CAUTION/DANGER) for EVM tokens on eth, bnb, or base.",
         mimeType: "application/json",
+        // Schema discovery cho CDP Bazaar: agent biet goi the nao.
+        outputSchema: {
+          input: {
+            type: "http",
+            method: "POST",
+            bodyType: "json",
+            bodyFields: {
+              token: {
+                type: "string",
+                description: "Token contract address (0x...).",
+                required: true,
+              },
+              chain: {
+                type: "string",
+                description: "EVM chain: eth, bnb, or base.",
+                required: true,
+              },
+              mode: {
+                type: "string",
+                description: "Scoring mode: auto (default), new (strict), or mature (lenient).",
+                required: false,
+              },
+            },
+          },
+          output: {
+            verdict: "string (GO | CAUTION | DANGER)",
+            reasons: "array",
+            checks: "array",
+            tokenInfo: "object",
+            maturity: "object",
+          },
+        },
       },
     },
   },
