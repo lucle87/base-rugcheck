@@ -15,19 +15,24 @@ know before trading: upgradeable proxy, owner still in control, mint capability,
 liquidity not burned. Scoring adapts to liquidity depth so established tokens are
 not over-flagged while fresh meme coins are scored strictly.
 
-## What it checks (on-chain via RPC)
+## What it checks
+On-chain via RPC:
 - ERC-20 validity (is it even a token, or just a wallet)
 - Upgradeable proxy (EIP-1967, beacon, OZ-legacy, UUPS) - logic can change
 - Ownership renounced or owner still in control
 - Mint capability in bytecode
 - LP burned percentage on the main DEX pair
 - Liquidity depth (used to classify token as new vs mature)
+Via GoPlus security data:
+- Honeypot / sellability simulation (can you actually sell)
+- Buy / sell tax
+- Holder concentration (top holder and top-10 %, excluding LP/burn)
+- Deployer address and risky privileges (reclaim ownership, hidden owner, pausable, blacklist, unverified)
 
 ## What it does NOT check (be honest with the user)
-- Honeypot / sellability simulation
-- Holder concentration / top-holder distribution
 - Off-chain liquidity locks in third-party lockers
 - Team intent or future actions
+- Honeypot result depends on GoPlus simulation and can miss freshly deployed traps
 A GO means no on-chain red flags were found in the checks performed, NOT "safe".
 Reputable centrally-controlled tokens may still show CAUTION.
 

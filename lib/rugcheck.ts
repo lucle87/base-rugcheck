@@ -1,4 +1,4 @@
-// Rug check on-chain bang viem (RPC thuan, khong indexer/API tra phi).
+// Rug check on-chain bang viem + GoPlus (honeypot, tax, holder, deployer).
 //
 // Doc duoc: ERC-20 hop le, owner da renounce chua, proxy nang cap duoc khong
 // (nhieu loai slot, gom proxy doi cu cua USDC), bytecode co ham mint khong,
@@ -14,6 +14,7 @@
 
 import { createPublicClient, http, getAddress } from "viem";
 import { pickChain, ChainConf } from "./chains";
+import { fetchGoPlus } from "./goplus";
 
 const DEAD = [
   "0x000000000000000000000000000000000000dEaD",
@@ -264,7 +265,110 @@ export async function rugCheck(
     nativeReserve,
   };
 
-  return scoreAndAssemble(conf, token, tokenInfo, effectiveMode, basis, established, sig);
+  const base = scoreAndAssemble(conf, token, tokenInfo, effectiveMode, basis, established, sig);
+  return await applyGoPlus(base, conf, token);
+}
+
+// Lop lam giau bang GoPlus: them honeypot, tax, holder concentration, deployer.
+async function applyGoPlus(
+  base: RugCheckResult,
+  conf: ChainConf,
+  token: string
+): Promise<RugCheckResult> {
+  const chainId = (conf as any).chain?.id as number | undefined;
+  if (!chainId) return base;
+
+  const g = await fetchGoPlus(chainId, token);
+  if (!g.available) {
+    base.checks.push({
+      id: "honeypot",
+      status: "info",
+      detail: "Honeypot/tax/holder data unavailable from GoPlus for this token right now.",
+    });
+    return base;
+  }
+
+  const strict = base.mode === "new";
+  let extra = 0;
+  let danger = false;
+
+  // Honeypot (mo phong ban).
+  if (g.isHoneypot === true || g.cannotSellAll === true) {
+    danger = true;
+    base.checks.push({ id: "honeypot", status: "danger", detail: "HONEYPOT: sell simulation indicates this token may not be sellable." });
+  } else if (g.cannotBuy === true) {
+    danger = true;
+    base.checks.push({ id: "honeypot", status: "danger", detail: "Trading blocked: token cannot currently be bought." });
+  } else if (g.isHoneypot === false) {
+    base.checks.push({ id: "honeypot", status: "ok", detail: "Sell simulation passed: token appears sellable (not a honeypot)." });
+  }
+
+  // Tax mua/ban.
+  if (g.buyTaxPct != null || g.sellTaxPct != null) {
+    const hi = Math.max(g.buyTaxPct ?? 0, g.sellTaxPct ?? 0);
+    const label = "buy " + (g.buyTaxPct ?? "?") + "% / sell " + (g.sellTaxPct ?? "?") + "%";
+    if (hi >= 50) {
+      danger = true;
+      base.checks.push({ id: "tax", status: "danger", detail: "Extreme tax (" + label + "): selling is effectively blocked." });
+    } else if (hi >= 10) {
+      extra += 2;
+      base.checks.push({ id: "tax", status: "warn", detail: "High tax (" + label + ")." });
+    } else {
+      base.checks.push({ id: "tax", status: "ok", detail: "Buy/sell tax low (" + label + ")." });
+    }
+  }
+
+  // Holder concentration.
+  if (g.topHolderPct != null) {
+    const top = g.topHolderPct;
+    const top10 = g.top10Pct;
+    if (top >= 50) {
+      extra += strict ? 3 : 2;
+      base.checks.push({ id: "concentration", status: strict ? "danger" : "warn", detail: "Top holder controls ~" + top + "% of supply (excl. LP/burn): single-wallet dump risk." });
+    } else if ((top10 ?? 0) >= 70) {
+      extra += strict ? 2 : 1;
+      base.checks.push({ id: "concentration", status: "warn", detail: "Top 10 holders control ~" + top10 + "% (excl. LP/burn): concentrated." });
+    } else {
+      base.checks.push({ id: "concentration", status: "ok", detail: "Distribution: top holder ~" + top + "%, top10 ~" + (top10 ?? "?") + "% (excl. LP/burn). Holders: " + (g.holderCount ?? "?") + "." });
+    }
+  }
+
+  // Deployer + quyen nguy hiem.
+  if (g.creatorAddress) {
+    const privs: string[] = [];
+    if (g.canTakeBackOwnership) privs.push("can reclaim ownership");
+    if (g.hiddenOwner) privs.push("hidden owner");
+    if (g.transferPausable) privs.push("transfers pausable");
+    if (g.hasBlacklist) privs.push("blacklist function");
+    if (g.isOpenSource === false) privs.push("unverified source");
+    const who = "Deployer " + g.creatorAddress + (g.creatorPct != null ? " (holds ~" + g.creatorPct + "%)" : "");
+    if (privs.length) {
+      extra += strict ? 2 : 1;
+      base.checks.push({ id: "deployer", status: "warn", detail: who + ". Risky privileges: " + privs.join(", ") + "." });
+    } else {
+      base.checks.push({ id: "deployer", status: "ok", detail: who + ". No high-risk privileges flagged by GoPlus." });
+    }
+  }
+
+  // Verdict: honeypot/extreme = DANGER; con lai cong don extra vao bac hien tai.
+  if (danger) {
+    base.verdict = "DANGER";
+  } else if (extra > 0 && base.verdict !== "DANGER") {
+    const threshold = strict ? 3 : 4;
+    if (base.verdict === "GO") base.verdict = extra >= threshold ? "DANGER" : "CAUTION";
+    else if (base.verdict === "CAUTION" && extra >= threshold) base.verdict = "DANGER";
+  }
+
+  let reasons = base.checks.filter((c) => c.status === "warn" || c.status === "danger").map((c) => c.detail);
+  if (reasons.length === 0) reasons = ["No on-chain red flags detected in the checks performed."];
+  base.reasons = reasons;
+
+  // Honeypot + holder concentration gio DA check, bo khoi notChecked.
+  base.notChecked = base.notChecked.filter(
+    (x) => !/honeypot/i.test(x) && !/holder concentration/i.test(x)
+  );
+
+  return base;
 }
 
 function scoreAndAssemble(
@@ -423,4 +527,4 @@ const NOT_CHECKED = [
 ];
 
 const DISCLAIMER =
-  "On-chain heuristic check only. A 'GO' means no on-chain red flags were found in the checks performed, NOT that the token is safe. Scoring adapts to liquidity depth: established tokens with deep liquidity are scored leniently (owner/mint privileges are often legitimate), new/shallow tokens strictly. Reputable tokens with central control may still show CAUTION. It does NOT detect honeypots, holder concentration, off-chain locks, or team intent. Never the sole basis for a trade. Do your own research.";
+  "Heuristic check combining on-chain reads with GoPlus security data (honeypot, tax, holders, deployer). A 'GO' means no red flags were found in the checks performed, NOT that the token is safe. Scoring adapts to liquidity depth: established tokens with deep liquidity are scored leniently (owner/mint privileges are often legitimate), new/shallow tokens strictly. Reputable tokens with central control may still show CAUTION. Honeypot result relies on GoPlus simulation and can miss freshly deployed traps. Does not detect off-chain liquidity locks or team intent. Never the sole basis for a trade. Do your own research.";

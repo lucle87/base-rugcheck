@@ -58,7 +58,7 @@ const paidHandler = withX402(
       },
     ],
     description:
-      "On-chain token safety check (GO/CAUTION/DANGER) for EVM tokens on eth, bnb, or base.",
+      "Token safety check with honeypot simulation, buy/sell tax, holder concentration and deployer privileges (GO/CAUTION/DANGER) for EVM tokens on eth, bnb, or base.",
     mimeType: "application/json",
     extensions: {
       ...declareDiscoveryExtension({
