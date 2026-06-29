@@ -69,7 +69,14 @@ export async function fetchGoPlus(chainId: number, token: string): Promise<GoPlu
     "?contract_addresses=" +
     addr;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA }, cache: "no-store" });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(url, { headers: { "User-Agent": UA }, cache: "no-store", signal: ctrl.signal });
+    } finally {
+      clearTimeout(t);
+    }
     if (!res.ok) return EMPTY;
     const data: any = await res.json();
     const rec = data?.result?.[addr];

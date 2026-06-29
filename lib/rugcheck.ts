@@ -74,7 +74,7 @@ export type RugCheckResult = {
 };
 
 function client(conf: ChainConf) {
-  return createPublicClient({ chain: conf.chain, transport: http(conf.rpc) });
+  return createPublicClient({ chain: conf.chain, transport: http(conf.rpc, { timeout: 6000, retryCount: 1, retryDelay: 300 }) });
 }
 
 async function tryRead<T>(fn: () => Promise<T>): Promise<T | null> {
@@ -140,10 +140,12 @@ export async function rugCheck(
   const pc = client(conf);
 
   // ---- ERC-20 ----
-  const name = await tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "name" }));
-  const symbol = await tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }));
-  const decimals = await tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }));
-  const totalSupply = await tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "totalSupply" }));
+  const [name, symbol, decimals, totalSupply] = await Promise.all([
+    tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "name" })),
+    tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "symbol" })),
+    tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "decimals" })),
+    tryRead(() => pc.readContract({ address: token, abi: erc20Abi, functionName: "totalSupply" })),
+  ]);
   const erc20Valid = symbol != null && decimals != null && totalSupply != null;
 
   const tokenInfo = {

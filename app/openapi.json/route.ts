@@ -35,6 +35,16 @@ export async function GET() {
           operationId: "rugCheckBase",
           summary: "On-chain rug/safety check for an EVM token (GO/CAUTION/DANGER), paid via x402 on Base",
           tags: ["crypto", "security", "token", "rugcheck", "evm", "base", "meme", "x402"],
+          "x-agent-guidance": {
+            whenToUse:
+              "Use as a go/no-go safety gate before an agent buys, swaps, or interacts with an unfamiliar ERC-20 on Ethereum, BNB Chain, or Base, especially new meme coins. The first due-diligence step in any EVM token workflow.",
+            input:
+              "POST JSON: { token (contract 0x...), chain (eth|bnb|base), mode? (auto|new|mature) }. mode=auto adapts to liquidity depth; new=strict for fresh coins; mature=lenient for established tokens.",
+            output:
+              "verdict (GO|CAUTION|DANGER), reasons[], checks[] (ERC-20 validity, sellability/tax via GoPlus, ownership, upgradeable proxy, mint, LP burn/lock, bytecode capabilities), tokenInfo, notChecked[].",
+            paymentFlow:
+              "First call returns HTTP 402 with an x402 payment requirement (USDC on Base). Pay with an x402 client, then retry the same request to get 200.",
+          },
           "x-payment-info": {
             x402Version: 2,
             price: { mode: "fixed", amount: priceUsd, currency: "USD" },
