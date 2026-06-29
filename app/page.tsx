@@ -32,14 +32,15 @@ Price: ${PRICE} per call (USDC via x402 on ${NETWORK_LABEL})`}</pre>
           <li>Upgradeable proxy (EIP-1967, beacon, OZ-legacy, UUPS)</li>
           <li>Ownership renounced or owner in control</li>
           <li>Mint capability in bytecode</li>
-          <li>LP burned percentage on main DEX pair</li>
+          <li>LP burned + locked status (major lockers) on main DEX pair</li>
+          <li>Bytecode capability flags (blacklist, pausable, fees) + fingerprint</li>
           <li>Liquidity depth (adaptive new vs mature scoring)</li>
         </ul>
       </div>
 
       <p style={{ color: "#9aa0aa", fontSize: 13, marginTop: 24 }}>
         On-chain heuristic only. A GO means no on-chain red flags were found in the checks
-        performed, not that the token is safe. Does not detect honeypots or holder concentration.
+        performed, not that the token is safe. LP lock detection covers major lockers plus burn; bytecode flags are heuristic.
         Reputable centrally-controlled tokens may show CAUTION. Never the sole basis for a trade.
       </p>
     </main>

@@ -21,7 +21,8 @@ On-chain via RPC:
 - Upgradeable proxy (EIP-1967, beacon, OZ-legacy, UUPS) - logic can change
 - Ownership renounced or owner still in control
 - Mint capability in bytecode
-- LP burned percentage on the main DEX pair
+- LP burned percentage on the main DEX pair, plus lock status at major lockers (UNCX, Team Finance, PinkLock)
+- Bytecode capability flags (blacklist, pausable, adjustable fees, trading gate) + fingerprint
 - Liquidity depth (used to classify token as new vs mature)
 Via GoPlus security data:
 - Honeypot / sellability simulation (can you actually sell)

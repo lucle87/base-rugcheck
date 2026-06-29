@@ -9,12 +9,13 @@
 //  - mature : noi tay (token thanh khoan sau -> owner/mint thuong la quyen hop phap)
 //  - auto   : tu chon dua tren do sau thanh khoan
 //
-// KHONG doc duoc: honeypot/ban duoc, phan bo holder, khoa LP o locker ben thu ba,
+// Doc mot phan: khoa LP o cac locker pho bien (UNCX/Team Finance/PinkLock) + burn.
 // y dinh doi ngu. "GO" = khong thay co dau hieu xau on-chain trong cac check da lam.
 
 import { createPublicClient, http, getAddress } from "viem";
 import { pickChain, ChainConf } from "./chains";
 import { fetchGoPlus } from "./goplus";
+import { analyzeBytecode } from "./bytecode";
 
 const DEAD = [
   "0x000000000000000000000000000000000000dEaD",
@@ -109,6 +110,10 @@ type Signals = {
   lpFound: boolean;
   lpBurned: boolean;
   lpBurnedPct: number | null;
+  lpLockedPct: number | null;
+  lpSecuredPct: number | null;
+  bytecodeFingerprint: string | null;
+  bytecodeCapabilities: string[];
   nativeReserve: number | null;
 };
 
@@ -175,15 +180,18 @@ export async function rugCheck(
   const ownerRenounced = ownerKnown && isDead(ownerAddr as string);
   const ownerActive = ownerKnown && !ownerRenounced;
 
-  // ---- Mint trong bytecode ----
+  // ---- Mint + phan tich bytecode ----
   const code = await tryRead(() => pc.getBytecode({ address: token }));
   const codeHex = (typeof code === "string" ? code : "").toLowerCase();
   const hasMint = ["40c10f19", "a0712d68"].some((s) => codeHex.includes(s));
+  const bytecode = analyzeBytecode(typeof code === "string" ? code : null);
 
   // ---- Thanh khoan: tim cap token/WNATIVE, doc reserve + burn ----
   let lpFound = false;
   let lpBurned = false;
   let lpBurnedPct: number | null = null;
+  let lpLockedPct: number | null = null;
+  let lpSecuredPct: number | null = null;
   let nativeReserve: number | null = null;
 
   try {
@@ -198,7 +206,7 @@ export async function rugCheck(
       lpFound = true;
       const pairAddr = pair as `0x${string}`;
 
-      // burn %
+      // burn % + locked %
       const lpTotal = await tryRead(() => pc.readContract({ address: pairAddr, abi: erc20Abi, functionName: "totalSupply" }));
       if (typeof lpTotal === "bigint" && lpTotal > 0n) {
         let burned = 0n;
@@ -210,6 +218,17 @@ export async function rugCheck(
         }
         lpBurnedPct = Number((burned * 10000n) / lpTotal) / 100;
         lpBurned = lpBurnedPct >= 90;
+
+        // LP khoa o cac locker da biet (mot phan, khong day du)
+        let locked = 0n;
+        for (const l of conf.lockers) {
+          const b = await tryRead(() =>
+            pc.readContract({ address: pairAddr, abi: erc20Abi, functionName: "balanceOf", args: [l as `0x${string}`] })
+          );
+          if (typeof b === "bigint") locked += b;
+        }
+        lpLockedPct = Number((locked * 10000n) / lpTotal) / 100;
+        lpSecuredPct = Math.min(100, (lpBurnedPct ?? 0) + (lpLockedPct ?? 0));
       }
 
       // native reserve (do sau thanh khoan)
@@ -262,6 +281,10 @@ export async function rugCheck(
     lpFound,
     lpBurned,
     lpBurnedPct,
+    lpLockedPct,
+    lpSecuredPct,
+    bytecodeFingerprint: bytecode.fingerprint,
+    bytecodeCapabilities: bytecode.capabilities,
     nativeReserve,
   };
 
@@ -426,24 +449,45 @@ function scoreAndAssemble(
     checks.push({ id: "mint", status: "ok", detail: "No common mint selector found in bytecode." });
   }
 
-  // liquidity burn
+  // liquidity: burn + lock (locker da biet)
+  const secured = s.lpSecuredPct ?? 0;
   if (!s.lpFound) {
     checks.push({
       id: "liquidity",
       status: "info",
       detail: "No " + conf.label + " native pair found on main DEX (token may be paired elsewhere or have no liquidity).",
     });
-  } else if (s.lpBurned) {
-    checks.push({ id: "liquidity", status: "ok", detail: "LP largely burned (~" + (s.lpBurnedPct ?? 0).toFixed(1) + "%)." });
+  } else if (secured >= 90) {
+    const parts: string[] = [];
+    if ((s.lpBurnedPct ?? 0) > 0) parts.push("~" + (s.lpBurnedPct ?? 0).toFixed(1) + "% burned");
+    if ((s.lpLockedPct ?? 0) > 0) parts.push("~" + (s.lpLockedPct ?? 0).toFixed(1) + "% locked in known lockers");
+    checks.push({ id: "liquidity", status: "ok", detail: "LP secured (" + parts.join(" + ") + "), liquidity cannot be pulled by the team." });
   } else {
-    if (strict) weight += 2; // token non: LP chua khoa la canh bao manh
+    if (strict) weight += 2;
+    const detail =
+      "LP only ~" + secured.toFixed(1) + "% secured (~" + (s.lpBurnedPct ?? 0).toFixed(1) + "% burned, ~" + (s.lpLockedPct ?? 0).toFixed(1) + "% in known lockers)" +
+      (strict
+        ? ": remaining LP could be removed (rug pull risk). Note: only major lockers are detected, a real lock elsewhere may be missed."
+        : " (mature tokens sometimes hold LP in unlisted lockers; detection of locks is partial).");
+    checks.push({ id: "liquidity", status: strict ? "warn" : "info", detail });
+  }
+
+  // bytecode capabilities (heuristic, khong phai so voi database rug)
+  if (s.bytecodeCapabilities.length) {
+    const danger = s.bytecodeCapabilities.filter((c) => c === "blacklist" || c === "pausable" || c === "trading gate");
+    if (danger.length && strict) weight += 1;
     checks.push({
-      id: "liquidity",
-      status: strict ? "warn" : "info",
+      id: "bytecode",
+      status: danger.length ? (strict ? "warn" : "info") : "info",
       detail:
-        "LP not burned (~" + (s.lpBurnedPct ?? 0).toFixed(1) + "% burned)" +
-        (strict ? ": liquidity could be removed. Third-party locks not detected." : " (common for mature tokens that lock rather than burn; locks not detected)."),
+        "Bytecode exposes capabilities: " + s.bytecodeCapabilities.join(", ") +
+        ". These are heuristic flags (the contract CAN do these), often present in legitimate tokens too, not a match against known rugs.",
     });
+  } else {
+    checks.push({ id: "bytecode", status: "ok", detail: "No common dangerous-function selectors (blacklist, pause, adjustable fees, trading gate) found in bytecode." });
+  }
+  if (s.bytecodeFingerprint) {
+    checks.push({ id: "fingerprint", status: "info", detail: "Bytecode fingerprint: " + s.bytecodeFingerprint.slice(0, 18) + "... (keccak256 of runtime code; identifies clones)." });
   }
 
   // maturity note
@@ -522,9 +566,9 @@ function finalize(
 const NOT_CHECKED = [
   "Honeypot / sellability (cannot buy-sell simulate via plain RPC)",
   "Holder concentration / top-holder distribution (needs an indexer)",
-  "Off-chain liquidity locks in third-party lockers",
+  "LP locks in lockers not in our known list (only major lockers are detected; burn is always detected)",
   "Team intent, social signals, or future dev actions",
 ];
 
 const DISCLAIMER =
-  "Heuristic check combining on-chain reads with GoPlus security data (honeypot, tax, holders, deployer). A 'GO' means no red flags were found in the checks performed, NOT that the token is safe. Scoring adapts to liquidity depth: established tokens with deep liquidity are scored leniently (owner/mint privileges are often legitimate), new/shallow tokens strictly. Reputable tokens with central control may still show CAUTION. Honeypot result relies on GoPlus simulation and can miss freshly deployed traps. Does not detect off-chain liquidity locks or team intent. Never the sole basis for a trade. Do your own research.";
+  "Heuristic check combining on-chain reads with GoPlus security data (honeypot, tax, holders, deployer). A 'GO' means no red flags were found in the checks performed, NOT that the token is safe. Scoring adapts to liquidity depth: established tokens with deep liquidity are scored leniently (owner/mint privileges are often legitimate), new/shallow tokens strictly. Reputable tokens with central control may still show CAUTION. Honeypot result relies on GoPlus simulation and can miss freshly deployed traps. LP security is checked via burn (reliable, universal) plus locks at major known lockers (partial: a lock at an unlisted locker may be missed). Bytecode capability flags are heuristic (the contract can do X), not a match against a database of known rugs. Does not read team intent. Never the sole basis for a trade. Do your own research.";
